@@ -17,9 +17,13 @@
   [Marcelo Fabri](https://github.com/marcelofabri)
   [#326](https://github.com/realm/SwiftLint/issues/326)
 
+* `operator_usage_whitespace` rule is now correctable.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  
 ##### Bug Fixes
 
-* None.
+* Grammar checks.  
+  [Michael Helmbrecht](https://github.com/mrh-is)
 
 ## 0.14.0: Super Awesome Retractable Drying Rack
 
@@ -145,7 +149,7 @@
   [Marcelo Fabri](https://github.com/marcelofabri)
   [#934](https://github.com/realm/SwiftLint/issues/934)
 
-* Fix `traling_comma` rule reporting a violation for commas in comments.  
+* Fix `trailing_comma` rule reporting a violation for commas in comments.  
   [Marcelo Fabri](https://github.com/marcelofabri)
   [#940](https://github.com/realm/SwiftLint/issues/940)
 
