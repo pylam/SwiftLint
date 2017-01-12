@@ -24,7 +24,7 @@ class ReporterTests: XCTestCase {
             EmojiReporter.self
         ]
         for reporter in reporters {
-            XCTAssertEqual(reporter.identifier, reporterFromString(reporter.identifier).identifier)
+            XCTAssertEqual(reporter.identifier, reporterFrom(identifier: reporter.identifier).identifier)
         }
     }
 
@@ -32,7 +32,7 @@ class ReporterTests: XCTestCase {
         return File(path: "\(bundlePath)/\(filename)")!.contents
     }
 
-    func generateViolations() -> [StyleViolation] {
+    private func generateViolations() -> [StyleViolation] {
         let location = Location(file: "filename", line: 1, character: 2)
         return [
             StyleViolation(ruleDescription: LineLengthRule.description,
@@ -69,7 +69,18 @@ class ReporterTests: XCTestCase {
     func testJSONReporter() {
         let expectedOutput = stringFromFile("CannedJSONReporterOutput.json")
         let result = JSONReporter.generateReport(generateViolations())
-        XCTAssertEqual(result, expectedOutput)
+        func jsonValue(_ jsonString: String) -> NSObject {
+            let data = jsonString.data(using: .utf8)!
+            // swiftlint:disable:next force_try
+            let result = try! JSONSerialization.jsonObject(with: data, options: [])
+            if let dict = (result as? [String: Any])?.bridge() {
+                return dict
+            } else if let array = (result as? [Any])?.bridge() {
+                return array
+            }
+            fatalError()
+        }
+        XCTAssertEqual(jsonValue(result), jsonValue(expectedOutput))
     }
 
     func testCSVReporter() {
@@ -107,8 +118,7 @@ extension ReporterTests {
             ("testReporterFromString", testReporterFromString),
             ("testXcodeReporter", testXcodeReporter),
             ("testEmojiReporter", testEmojiReporter),
-            // Fails on Linux
-            // ("testJSONReporter", testJSONReporter),
+            ("testJSONReporter", testJSONReporter),
             ("testCSVReporter", testCSVReporter),
             ("testCheckstyleReporter", testCheckstyleReporter),
             ("testJunitReporter", testJunitReporter),

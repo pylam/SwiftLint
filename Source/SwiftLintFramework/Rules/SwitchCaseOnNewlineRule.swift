@@ -12,7 +12,7 @@ import SourceKittenFramework
 public struct SwitchCaseOnNewlineRule: ConfigurationProviderRule, Rule, OptInRule {
     public var configuration = SeverityConfiguration(.warning)
 
-    public init() { }
+    public init() {}
 
     public static let description = RuleDescription(
         identifier: "switch_case_on_newline",
@@ -33,7 +33,8 @@ public struct SwitchCaseOnNewlineRule: ConfigurationProviderRule, Rule, OptInRul
             "case let .myCase(value) where value > 10:\n return false",
             "enum Environment {\n case development\n}",
             "enum Environment {\n case development(url: URL)\n}",
-            "enum Environment {\n case development(url: URL) // staging\n}"
+            "enum Environment {\n case development(url: URL) // staging\n}",
+            "case #selector(aFunction(_:)):\n return false\n"
         ],
         triggeringExamples: [
             "↓case 1: return true",
@@ -41,18 +42,19 @@ public struct SwitchCaseOnNewlineRule: ConfigurationProviderRule, Rule, OptInRul
             "↓default: return true",
             "↓case \"a string\": return false",
             "↓case .myCase: return false // error from network",
-            "↓case let .myCase(value) where value > 10: return false"
+            "↓case let .myCase(value) where value > 10: return false",
+            "↓case #selector(aFunction(_:)): return false\n"
         ]
     )
 
-    public func validateFile(_ file: File) -> [StyleViolation] {
+    public func validate(file: File) -> [StyleViolation] {
         let pattern = "(case[^\n]*|default):[^\\S\n]*[^\n]"
-        return file.rangesAndTokensMatching(pattern).filter { range, tokens in
+        return file.rangesAndTokens(matching: pattern).filter { range, tokens in
             guard let firstToken = tokens.first, tokenIsKeyword(token: firstToken) else {
                 return false
             }
 
-            let tokenString = contentForToken(token: firstToken, file: file)
+            let tokenString = content(for: firstToken, file: file)
             guard ["case", "default"].contains(tokenString) else {
                 return false
             }
@@ -65,14 +67,14 @@ public struct SwitchCaseOnNewlineRule: ConfigurationProviderRule, Rule, OptInRul
             }
 
             let line = file.lines[lineNumber - 1]
-            let allLineTokens = file.syntaxMap.tokensIn(line.byteRange)
+            let allLineTokens = file.syntaxMap.tokens(inByteRange: line.byteRange)
             let lineTokens = allLineTokens.filter(tokenIsKeyword)
 
             guard let firstLineToken = lineTokens.first else {
                 return false
             }
 
-            let firstTokenInLineString = contentForToken(token: firstLineToken, file: file)
+            let firstTokenInLineString = content(for: firstLineToken, file: file)
             guard firstTokenInLineString == tokenString else {
                 return false
             }
@@ -97,7 +99,7 @@ public struct SwitchCaseOnNewlineRule: ConfigurationProviderRule, Rule, OptInRul
         return SyntaxKind.commentKinds().contains(kind)
     }
 
-    private func contentForToken(token: SyntaxToken, file: File) -> String {
+    private func content(for token: SyntaxToken, file: File) -> String {
         return contentForRange(start: token.offset, length: token.length, file: file)
     }
 
@@ -119,25 +121,25 @@ public struct SwitchCaseOnNewlineRule: ConfigurationProviderRule, Rule, OptInRul
     private func isViolation(lineTokens: [SyntaxToken], file: File, line: Line) -> Bool {
         let trailingCommentsTokens = trailingComments(tokens: lineTokens)
 
-        guard let firstToken = lineTokens.first, !isEnumCase(file, token: firstToken) else {
+        guard let firstToken = lineTokens.first, !isEnumCase(file: file, token: firstToken) else {
             return false
         }
 
-        guard let firstComment = trailingCommentsTokens.first,
-            let lastComment = trailingCommentsTokens.last else {
-                return true
+        var commentsLength = 0
+        if let firstComment = trailingCommentsTokens.first,
+            let lastComment = trailingCommentsTokens.last {
+            commentsLength = (lastComment.offset + lastComment.length) - firstComment.offset
         }
 
-        let commentsLength = (lastComment.offset + lastComment.length) - firstComment.offset
         let line = contentForRange(start: line.byteRange.location,
                                    length: line.byteRange.length - commentsLength, file: file)
-        let cleaned = line.trimmingCharacters(in: .whitespaces)
+        let cleaned = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return !cleaned.hasSuffix(":")
     }
 
-    private func isEnumCase(_ file: File, token: SyntaxToken) -> Bool {
-        let kinds = file.structure.kindsFor(token.offset).flatMap {
+    private func isEnumCase(file: File, token: SyntaxToken) -> Bool {
+        let kinds = file.structure.kinds(forByteOffset: token.offset).flatMap {
             SwiftDeclarationKind(rawValue: $0.kind)
         }
 

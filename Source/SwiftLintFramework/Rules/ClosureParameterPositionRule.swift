@@ -31,7 +31,10 @@ public struct ClosureParameterPositionRule: ASTRule, ConfigurationProviderRule {
                 "return { migration, schemaVersion in\n" +
                     "rlmMigration(migration.rlmMigration, schemaVersion)\n" +
                 "}\n" +
-            "}"
+            "}",
+            "let mediaView: UIView = { [weak self] index in\n" +
+            "   return UIView()\n" +
+            "}(index)\n"
         ],
         triggeringExamples: [
             "[1, 2].map {\n ↓number in\n number + 1 \n}\n",
@@ -47,9 +50,8 @@ public struct ClosureParameterPositionRule: ASTRule, ConfigurationProviderRule {
 
     private static let openBraceRegex = regex("\\{")
 
-    public func validateFile(_ file: File,
-                             kind: SwiftExpressionKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftExpressionKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         guard kind == .call else {
             return []
         }
@@ -68,19 +70,18 @@ public struct ClosureParameterPositionRule: ASTRule, ConfigurationProviderRule {
         // parameters from inner closures are reported on the top-level one, so we can't just
         // use the first and last parameters to check, we need to check all of them
         return parameters.flatMap { param -> StyleViolation? in
-            guard let paramOffset = (param["key.offset"] as? Int64).flatMap({ Int($0) }) else {
+            guard let paramOffset = (param["key.offset"] as? Int64).flatMap({ Int($0) }),
+                paramOffset > rangeStart else {
                 return nil
             }
 
             let rangeLength = paramOffset - rangeStart
             let contents = file.contents.bridge()
 
-            guard let range = contents.byteRangeToNSRange(start: rangeStart,
-                                                          length: rangeLength),
+            guard let range = contents.byteRangeToNSRange(start: rangeStart, length: rangeLength),
                 let match = regex.matches(in: file.contents, options: [], range: range).last?.range,
                 match.location != NSNotFound,
-                let braceOffset = contents.NSRangeToByteRange(start: match.location,
-                                                              length: match.length)?.location,
+                let braceOffset = contents.NSRangeToByteRange(start: match.location, length: match.length)?.location,
                 let (braceLine, _) = contents.lineAndCharacter(forByteOffset: braceOffset),
                 let (paramLine, _) = contents.lineAndCharacter(forByteOffset: paramOffset),
                 braceLine != paramLine else {

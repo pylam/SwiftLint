@@ -10,88 +10,14 @@ import SwiftLintFramework
 import XCTest
 
 // swiftlint:disable file_length
-// swiftlint:disable:next type_body_length
 class RulesTests: XCTestCase {
+
+    func testClassDelegateProtocol() {
+        verifyRule(ClassDelegateProtocolRule.description)
+    }
 
     func testClosingBrace() {
         verifyRule(ClosingBraceRule.description)
-    }
-
-    // swiftlint:disable:next function_body_length
-    func testColon() {
-        // Verify Colon rule with test values for when flexible_right_spacing
-        // is false (default).
-        verifyRule(ColonRule.description)
-
-        // Verify Colon rule with test values for when flexible_right_spacing
-        // is true.
-        let description = RuleDescription(
-            identifier: "colon",
-            name: "Colon",
-            description: "Colons should be next to the identifier when specifying a type.",
-            nonTriggeringExamples: [
-                "let abc: Void\n",
-                "let abc: [Void: Void]\n",
-                "let abc: (Void, Void)\n",
-                "let abc: ([Void], String, Int)\n",
-                "let abc: [([Void], String, Int)]\n",
-                "let abc: String=\"def\"\n",
-                "let abc: Int=0\n",
-                "let abc: Enum=Enum.Value\n",
-                "func abc(def: Void) {}\n",
-                "func abc(def: Void, ghi: Void) {}\n",
-                "// 周斌佳年周斌佳\nlet abc: String = \"abc:\"",
-                "let abc:  Void\n",
-                "let abc:  (Void, String, Int)\n",
-                "let abc:  ([Void], String, Int)\n",
-                "let abc:  [([Void], String, Int)]\n",
-                "func abc(def:  Void) {}\n"
-            ],
-            triggeringExamples: [
-                "let ↓abc:Void\n",
-                "let ↓abc :Void\n",
-                "let ↓abc : Void\n",
-                "let ↓abc : [Void: Void]\n",
-                "let ↓abc : (Void, String, Int)\n",
-                "let ↓abc : ([Void], String, Int)\n",
-                "let ↓abc : [([Void], String, Int)]\n",
-                "let ↓abc :String=\"def\"\n",
-                "let ↓abc :Int=0\n",
-                "let ↓abc :Int = 0\n",
-                "let ↓abc:Int=0\n",
-                "let ↓abc:Int = 0\n",
-                "let ↓abc:Enum=Enum.Value\n",
-                "func abc(↓def:Void) {}\n",
-                "func abc(↓def :Void) {}\n",
-                "func abc(↓def : Void) {}\n",
-                "func abc(def: Void, ↓ghi :Void) {}\n"
-            ],
-            corrections: [
-                "let ↓abc:Void\n": "let abc: Void\n",
-                "let ↓abc :Void\n": "let abc: Void\n",
-                "let ↓abc : Void\n": "let abc: Void\n",
-                "let ↓abc : [Void: Void]\n": "let abc: [Void: Void]\n",
-                "let ↓abc : (Void, String, Int)\n": "let abc: (Void, String, Int)\n",
-                "let ↓abc : ([Void], String, Int)\n": "let abc: ([Void], String, Int)\n",
-                "let ↓abc : [([Void], String, Int)]\n": "let abc: [([Void], String, Int)]\n",
-                "let ↓abc :String=\"def\"\n": "let abc: String=\"def\"\n",
-                "let ↓abc :Int=0\n": "let abc: Int=0\n",
-                "let ↓abc :Int = 0\n": "let abc: Int = 0\n",
-                "let ↓abc:Int=0\n": "let abc: Int=0\n",
-                "let ↓abc:Int = 0\n": "let abc: Int = 0\n",
-                "let ↓abc:Enum=Enum.Value\n": "let abc: Enum=Enum.Value\n",
-                "func abc(↓def:Void) {}\n": "func abc(def: Void) {}\n",
-                "func abc(↓def :Void) {}\n": "func abc(def: Void) {}\n",
-                "func abc(↓def : Void) {}\n": "func abc(def: Void) {}\n",
-                "func abc(def: Void, ↓ghi :Void) {}\n": "func abc(def: Void, ghi: Void) {}\n"
-            ]
-        )
-
-        verifyRule(description, ruleConfiguration: ["flexible_right_spacing": true])
-    }
-
-    func testComma() {
-        verifyRule(CommaRule.description)
     }
 
     func testClosureEndIndentation() {
@@ -102,8 +28,16 @@ class RulesTests: XCTestCase {
         verifyRule(ClosureParameterPositionRule.description)
     }
 
-    func testClosureSpacingRule() {
+    func testClosureSpacing() {
         verifyRule(ClosureSpacingRule.description)
+    }
+
+    func testComma() {
+        verifyRule(CommaRule.description)
+    }
+
+    func testCompilerProtocolInit() {
+        verifyRule(CompilerProtocolInitRule.description)
     }
 
     func testConditionalReturnsOnNewline() {
@@ -143,6 +77,10 @@ class RulesTests: XCTestCase {
                    testMultiByteOffsets: false)
     }
 
+    func testFirstWhere() {
+        verifyRule(FirstWhereRule.description)
+    }
+
     func testForceCast() {
         verifyRule(ForceCastRule.description)
     }
@@ -159,12 +97,20 @@ class RulesTests: XCTestCase {
         verifyRule(FunctionBodyLengthRule.description)
     }
 
-    func testFunctionParameterCountRule() {
+    func testFunctionParameterCount() {
         verifyRule(FunctionParameterCountRule.description)
     }
 
-    func testImplicitGetterRule() {
+    func testGenericTypeName() {
+        verifyRule(GenericTypeNameRule.description)
+    }
+
+    func testImplicitGetter() {
         verifyRule(ImplicitGetterRule.description)
+    }
+
+    func testLargeTuple() {
+        verifyRule(LargeTupleRule.description)
     }
 
     func testLeadingWhitespace() {
@@ -185,11 +131,6 @@ class RulesTests: XCTestCase {
 
     func testLegacyConstructor() {
         verifyRule(LegacyConstructorRule.description)
-    }
-
-    func testLineLength() {
-        verifyRule(LineLengthRule.description, commentDoesntViolate: false,
-                   stringDoesntViolate: false)
     }
 
     func testMark() {
@@ -214,8 +155,8 @@ class RulesTests: XCTestCase {
         verifyRule(NumberSeparatorRule.description)
     }
 
-    func testVerticalWhitespace() {
-        verifyRule(VerticalWhitespaceRule.description)
+    func testObjectLiteral() {
+        verifyRule(ObjectLiteralRule.description)
     }
 
     func testOpeningBrace() {
@@ -260,12 +201,28 @@ class RulesTests: XCTestCase {
         verifyRule(RedundantNilCoalescingRule.description)
     }
 
+    func testRedundantOptionalInitialization() {
+        verifyRule(RedundantOptionalInitializationRule.description)
+    }
+
     func testRedundantStringEnumValue() {
         verifyRule(RedundantStringEnumValueRule.description)
     }
 
+    func testRedundantVoidReturn() {
+        verifyRule(RedundantVoidReturnRule.description)
+    }
+
     func testReturnArrowWhitespace() {
         verifyRule(ReturnArrowWhitespaceRule.description)
+    }
+
+    func testShorthandOperator() {
+        verifyRule(ShorthandOperatorRule.description)
+    }
+
+    func testSortedImports() {
+        verifyRule(SortedImportsRule.description)
     }
 
     func testStatementPosition() {
@@ -287,43 +244,6 @@ class RulesTests: XCTestCase {
 
     func testTodo() {
         verifyRule(TodoRule.description, commentDoesntViolate: false)
-    }
-
-    func testTrailingComma() {
-        // verify with mandatory_comma = false (default value)
-        verifyRule(TrailingCommaRule.description)
-
-        // verify with mandatory_comma = true
-        let mandatoryCommaDescription = RuleDescription(
-            identifier: "trailing_comma",
-            name: "Trailing Comma",
-            description: "Trailing commas in arrays and dictionaries should be enforced.",
-            nonTriggeringExamples: [
-                "let foo = []\n",
-                "let foo = [:]\n",
-                "let foo = [1, 2, 3,]\n",
-                "let foo = [1, 2, 3, ]\n",
-                "let foo = [1, 2, 3   ,]\n",
-                "let foo = [1: 2, 2: 3, ]\n",
-                "struct Bar {\n let foo = [1: 2, 2: 3,]\n}\n",
-                "let foo = [Void]()\n",
-                "let foo = [(Void, Void)]()\n",
-                "let foo = [1, 2, 3]\n",
-                "let foo = [1: 2, 2: 3]\n",
-                "let foo = [1: 2, 2: 3   ]\n",
-                "struct Bar {\n let foo = [1: 2, 2: 3]\n}\n",
-                "let foo = [1, 2, 3] + [4, 5, 6]\n"
-            ],
-            triggeringExamples: [
-                "let foo = [1, 2,\n 3↓]\n",
-                "let foo = [1: 2,\n 2: 3↓]\n",
-                "let foo = [1: 2,\n 2: 3↓   ]\n",
-                "struct Bar {\n let foo = [1: 2,\n 2: 3↓]\n}\n",
-                "let foo = [1, 2,\n 3↓] + [4,\n 5, 6↓]\n"
-            ]
-        )
-
-        verifyRule(mandatoryCommaDescription, ruleConfiguration: ["mandatory_comma": true])
     }
 
     func testTrailingNewline() {
@@ -384,6 +304,10 @@ class RulesTests: XCTestCase {
         verifyRule(UnusedEnumeratedRule.description)
     }
 
+    func testUnusedOptionalBinding() {
+        verifyRule(UnusedOptionalBindingRule.description)
+    }
+
 // swiftlint:disable:next todo
 // FIXME: https://github.com/jpsim/SourceKitten/issues/269
 //    func testValidDocs() {
@@ -396,6 +320,10 @@ class RulesTests: XCTestCase {
 
     func testVariableName() {
         verifyRule(VariableNameRule.description)
+    }
+
+    func testVerticalParameterAlignment() {
+        verifyRule(VerticalParameterAlignmentRule.description)
     }
 
     func testVoidReturn() {
@@ -415,12 +343,13 @@ class RulesTests: XCTestCase {
 extension RulesTests {
     static var allTests: [(String, (RulesTests) -> () throws -> Void)] {
         return [
+            ("testClassDelegateProtocol", testClassDelegateProtocol),
             ("testClosingBrace", testClosingBrace),
-            ("testColon", testColon),
             ("testComma", testComma),
+            ("testCompilerProtocolInit", testCompilerProtocolInit),
             ("testClosureEndIndentation", testClosureEndIndentation),
             ("testClosureParameterPosition", testClosureParameterPosition),
-            ("testClosureSpacingRule", testClosureSpacingRule),
+            ("testClosureSpacing", testClosureSpacing),
             ("testConditionalReturnsOnNewline", testConditionalReturnsOnNewline),
             ("testControlStatement", testControlStatement),
             ("testCyclomaticComplexity", testCyclomaticComplexity),
@@ -430,47 +359,54 @@ extension RulesTests {
             ("testEmptyParenthesesWithTrailingClosure", testEmptyParenthesesWithTrailingClosure),
             ("testExplicitInit", testExplicitInit),
             ("testFileLength", testFileLength),
+            ("testFirstWhere", testFirstWhere),
             ("testForceCast", testForceCast),
             ("testForceTry", testForceTry),
             // ("testForceUnwrapping", testForceUnwrapping),
             ("testFunctionBodyLength", testFunctionBodyLength),
-            ("testFunctionParameterCountRule", testFunctionParameterCountRule),
-            ("testImplicitGetterRule", testImplicitGetterRule),
-            // ("testLeadingWhitespace", testLeadingWhitespace),
+            ("testFunctionParameterCount", testFunctionParameterCount),
+            ("testGenericTypeName", testGenericTypeName),
+            ("testImplicitGetter", testImplicitGetter),
+            ("testLargeTuple", testLargeTuple),
+            ("testLeadingWhitespace", testLeadingWhitespace),
             ("testLegacyCGGeometryFunctions", testLegacyCGGeometryFunctions),
             ("testLegacyNSGeometryFunctions", testLegacyNSGeometryFunctions),
             ("testLegacyConstant", testLegacyConstant),
             ("testLegacyConstructor", testLegacyConstructor),
-            ("testLineLength", testLineLength),
             ("testMark", testMark),
             ("testNesting", testNesting),
             ("testNimbleOperator", testNimbleOperator),
             ("testNumberSeparator", testNumberSeparator),
-            ("testVerticalWhitespace", testVerticalWhitespace),
+            ("testObjectLiteral", testObjectLiteral),
             ("testOpeningBrace", testOpeningBrace),
             ("testOperatorFunctionWhitespace", testOperatorFunctionWhitespace),
             ("testOperatorUsageWhitespace", testOperatorUsageWhitespace),
             ("testPrivateOutlet", testPrivateOutlet),
-            // ("testPrivateUnitTest", testPrivateUnitTest),
+            ("testPrivateUnitTest", testPrivateUnitTest),
             ("testProhibitedSuper", testProhibitedSuper),
             ("testRedundantNilCoalescing", testRedundantNilCoalescing),
+            ("testRedundantOptionalInitialization", testRedundantOptionalInitialization),
             ("testRedundantStringEnumValue", testRedundantStringEnumValue),
+            ("testRedundantVoidReturn", testRedundantVoidReturn),
             ("testReturnArrowWhitespace", testReturnArrowWhitespace),
+            ("testShorthandOperator", testShorthandOperator),
+            ("testSortedImports", testSortedImports),
             ("testStatementPosition", testStatementPosition),
             ("testStatementPositionUncuddled", testStatementPositionUncuddled),
             ("testSwitchCaseOnNewline", testSwitchCaseOnNewline),
             ("testSyntacticSugar", testSyntacticSugar),
             ("testTodo", testTodo),
-            ("testTrailingComma", testTrailingComma),
             ("testTrailingNewline", testTrailingNewline),
             ("testTrailingSemicolon", testTrailingSemicolon),
             ("testTrailingWhitespace", testTrailingWhitespace),
             ("testTypeBodyLength", testTypeBodyLength),
-            // ("testTypeName", testTypeName),
+            ("testTypeName", testTypeName),
             ("testUnusedClosureParameter", testUnusedClosureParameter),
             ("testUnusedEnumerated", testUnusedEnumerated),
+            ("testUnusedOptionalBinding", testUnusedOptionalBinding),
             ("testValidIBInspectable", testValidIBInspectable),
-            // ("testVariableName", testVariableName),
+            ("testVariableName", testVariableName),
+            ("VerticalParameterAlignment", testVerticalParameterAlignment),
             ("testVoidReturn", testVoidReturn),
             ("testSuperCall", testSuperCall),
             ("testWeakDelegate", testWeakDelegate)

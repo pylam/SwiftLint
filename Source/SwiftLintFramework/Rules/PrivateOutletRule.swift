@@ -31,16 +31,14 @@ public struct PrivateOutletRule: ASTRule, OptInRule, ConfigurationProviderRule {
         ]
     )
 
-    public func validateFile(_ file: File,
-                             kind: SwiftDeclarationKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftDeclarationKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         guard kind == .varInstance else {
             return []
         }
 
         // Check if IBOutlet
-        let isOutlet = dictionary.enclosedSwiftAttributes.contains(
-           "source.decl.attribute.iboutlet")
+        let isOutlet = dictionary.enclosedSwiftAttributes.contains("source.decl.attribute.iboutlet")
         guard isOutlet else { return [] }
 
         // Check if private

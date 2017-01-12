@@ -24,7 +24,7 @@ public struct ClosureEndIndentationRule: ASTRule, OptInRule, ConfigurationProvid
             "       print(number)\n" +
             "   }\n",
             "[1, 2].map { $0 + 1 }\n",
-            "return matchPattern(pattern, withSyntaxKinds: [.comment]).flatMap { range in\n" +
+            "return match(pattern: pattern, with: [.comment]).flatMap { range in\n" +
             "   return Command(string: contents, range: range)\n" +
             "}.flatMap { command in\n" +
             "   return command.expand()\n" +
@@ -35,7 +35,7 @@ public struct ClosureEndIndentationRule: ASTRule, OptInRule, ConfigurationProvid
             "   .startWithNext { number in\n" +
             "       print(number)\n" +
             "↓}\n",
-            "return matchPattern(pattern, withSyntaxKinds: [.comment]).flatMap { range in\n" +
+            "return match(pattern: pattern, with: [.comment]).flatMap { range in\n" +
             "   return Command(string: contents, range: range)\n" +
             "   ↓}.flatMap { command in\n" +
             "   return command.expand()\n" +
@@ -45,9 +45,8 @@ public struct ClosureEndIndentationRule: ASTRule, OptInRule, ConfigurationProvid
 
     private static let notWhitespace = regex("[^\\s]")
 
-    public func validateFile(_ file: File,
-                             kind: SwiftExpressionKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftExpressionKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         guard kind == .call else {
             return []
         }
@@ -61,7 +60,7 @@ public struct ClosureEndIndentationRule: ASTRule, OptInRule, ConfigurationProvid
             bodyLength > 0,
             case let endOffset = offset + length - 1,
             contents.substringWithByteRange(start: endOffset, length: 1) == "}",
-            let startOffset = startOffsetFor(dictionary: dictionary, file: file),
+            let startOffset = startOffset(forDictionary: dictionary, file: file),
             let (startLine, _) = contents.lineAndCharacter(forByteOffset: startOffset),
             let (endLine, endPosition) = contents.lineAndCharacter(forByteOffset: endOffset),
             case let nameEndPosition = nameOffset + nameLength,
@@ -89,8 +88,7 @@ public struct ClosureEndIndentationRule: ASTRule, OptInRule, ConfigurationProvid
         ]
     }
 
-    private func startOffsetFor(dictionary: [String: SourceKitRepresentable],
-                                file: File) -> Int? {
+    private func startOffset(forDictionary dictionary: [String: SourceKitRepresentable], file: File) -> Int? {
         guard let nameOffset = (dictionary["key.nameoffset"] as? Int64).flatMap({ Int($0) }),
             let nameLength = (dictionary["key.namelength"] as? Int64).flatMap({ Int($0) }) else {
             return nil

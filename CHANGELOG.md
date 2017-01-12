@@ -6,6 +6,206 @@
 
 ##### Enhancements
 
+* None.
+
+##### Bug Fixes
+
+* Fix false positives on `shorthand_operator` rule.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1156](https://github.com/realm/SwiftLint/issues/1156)
+  [#1163](https://github.com/realm/SwiftLint/issues/1163)
+
+* Fix false positive on `redundant_optional_initialization` rule.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1159](https://github.com/realm/SwiftLint/issues/1159)
+
+* Fix false positive on `operator_usage_whitespace` rule with decimal
+  literals in exponent format.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1153](https://github.com/realm/SwiftLint/issues/1153)
+
+* Fix `excluded` configuration not excluding files.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1166](https://github.com/realm/SwiftLint/issues/1166)
+
+## 0.16.0: Maximum Energy Efficiency Setting
+
+##### Breaking
+
+* Several API breaking changes were made to conform to the Swift 3 API Design
+  Guidelines. We apologize for any inconvenience this may have caused.
+
+##### Enhancements
+
+* Speed up linting by caching linter results across invocations.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#868](https://github.com/realm/SwiftLint/issues/868)
+
+* Speed up linting by processing multiple files and rules concurrently.  
+  [JP Simard](https://github.com/jpsim)
+  [#1077](https://github.com/realm/SwiftLint/issues/1077)
+
+* Make many operations in SwiftLintFramework safe to call in multithreaded
+  scenarios, including accessing `Linter.styleViolations`.  
+  [JP Simard](https://github.com/jpsim)
+  [#1077](https://github.com/realm/SwiftLint/issues/1077)
+
+* Permit unsigned and explicitly-sized integer types in `valid_ibinspectable`  
+  [Daniel Duan](https://github.com/dduan)
+
+* Make `nimble_operator` rule correctable.  
+  [Vojta Stavik](https://github.com/VojtaStavik)
+
+* Add `vertical_parameter_alignment` rule that checks if parameters are
+  vertically aligned for multi-line function declarations.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1033](https://github.com/realm/SwiftLint/issues/1033)
+
+* Add more helpful reason strings to TrailingCommaRule.  
+  [Matt Rubin](https://github.com/mattrubin)
+
+* Add `class_delegate_protocol` rule that warns against protocol declarations
+  that aren't marked as `: class` or `@objc`.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1039](https://github.com/realm/SwiftLint/issues/1039)
+
+* Add correctable `redundant_optional_initialization` rule that warns against
+  initializing optional variables with `nil`.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1052](https://github.com/realm/SwiftLint/issues/1052)
+
+* `redundant_nil_coalescing` rule is now correctable.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+
+* Make `number_separator` rule correctable.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+
+* `empty_parentheses_with_trailing_closure` rule is now correctable.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+
+* Add correctable `redundant_void_return` rule that warns against
+  explicitly adding `-> Void` to functions.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1066](https://github.com/realm/SwiftLint/issues/1066)
+
+* Add an opt-in rule that enforces alphabetical sorting of imports.  
+  [Scott Berrevoets](https://github.com/sberrevoets)
+  [#900](https://github.com/realm/SwiftLint/issues/900)
+
+* `type_name` rule forces enum values to be UpperCamelCase again
+  when used with Swift 2.3.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1090](https://github.com/realm/SwiftLint/issues/1090)
+
+* Make `weak_delegate` rule ignore computed properties.  
+  [Rafael Machado](https://github.com/rakaramos/)
+  [#1089](https://github.com/realm/SwiftLint/issues/1089)
+
+* Add `object_literal` opt-in rule that warns against using image and color
+  inits that can be replaced for `#imageLiteral` or `#colorLiteral` in
+  Swift 3.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1060](https://github.com/realm/SwiftLint/issues/1060)
+
+* Now `number_separator` rule can be configured with a minimum length.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1109](https://github.com/realm/SwiftLint/issues/1109)
+
+* Add `compiler_protocol_init` rule that flags usage of initializers 
+  declared in protocols used by the compiler such as `ExpressibleByArrayLiteral`
+  that shouldn't be called directly. Instead, you should use a literal anywhere
+  a concrete type conforming to the protocol is expected by the context.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1096](https://github.com/realm/SwiftLint/issues/1096)
+
+* Add `large_tuple` configurable rule that validates that tuples shouldn't
+  have too many members.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1065](https://github.com/realm/SwiftLint/issues/1065)
+
+* Add `generic_type_name` rule that validates generic constraint type names.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#51](https://github.com/realm/SwiftLint/issues/51)
+
+* Update `vertical_whitespace` rule to allow configuration of the number of 
+  consecutive empty lines before a violation using `max_empty_lines`.
+  The default value is still 1 line.  
+  [Aaron McTavish](https://github.com/aamctustwo)
+  [#769](https://github.com/realm/SwiftLint/issues/769)
+
+* Add check to ignore urls in `line_length` rule when `ignores_urls`
+  configuration is enabled.  
+  [Javier Hernández](https://github.com/jaherhi)
+  [#384](https://github.com/realm/SwiftLint/issues/384)
+
+* Add `shorthand_operator` rule that validates that shorthand operators should
+  be used when possible.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#902](https://github.com/realm/SwiftLint/issues/902)
+
+* Allow specifying a `swiftlint_version` configuration key which will log a
+  warning if the current running version of SwiftLint is different than this
+  value.  
+  [JP Simard](https://github.com/jpsim)
+  [#221](https://github.com/realm/SwiftLint/issues/221)
+
+* Add internal support for deprecated rule aliases.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#973](https://github.com/realm/SwiftLint/issues/973)
+
+* Add `unused_optional_binding` rule that will check for optional bindings 
+  not being used.  
+  [Rafael Machado](https://github.com/rakaramos/)
+  [#1116](https://github.com/realm/SwiftLint/issues/1116)
+
+##### Bug Fixes
+
+* Ignore close parentheses on `vertical_parameter_alignment` rule.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1042](https://github.com/realm/SwiftLint/issues/1042)
+
+* `syntactic_sugar` rule now doesn't flag declarations that can't be fixed.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#928](https://github.com/realm/SwiftLint/issues/928)
+
+* Fix false positives on `closure_parameter_position` and
+  `unused_closure_parameter` rules with Swift 2.3.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1019](https://github.com/realm/SwiftLint/issues/1019)
+
+* Fix crash on `trailing_comma` rule with Swift 2.3.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#921](https://github.com/realm/SwiftLint/issues/921)
+
+* Fix out of range exception in `AttributesRule`.  
+  [JP Simard](https://github.com/jpsim)
+  [#1105](https://github.com/realm/SwiftLint/issues/1105)
+
+* Fix `variable_name` and `type_name` rules on Linux.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+
+* Fix linting directories with names ending with `.swift`.  
+  [JP Simard](https://github.com/jpsim)
+
+* Fix running `swiftlint version` when building with Swift Package Manager.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1045](https://github.com/realm/SwiftLint/issues/1045)
+
+* Fix false positive on `vertical_parameter_alignment` rule when breaking line
+  in a default parameter declaration.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1129](https://github.com/realm/SwiftLint/issues/1129)
+
+## 0.15.0: Hand Washable Holiday Linens 🎄
+
+##### Breaking
+
+* `line_length` rule now has a default value of `120` for warnings.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1008](https://github.com/realm/SwiftLint/issues/1008)
+
+##### Enhancements
+
 * Add `closure_end_indentation` opt-in rule that validates closure closing
   braces according to these rules:
   * If the method call has chained breaking lines on each method
@@ -19,11 +219,52 @@
 
 * `operator_usage_whitespace` rule is now correctable.  
   [Marcelo Fabri](https://github.com/marcelofabri)
-  
+
+* `implicit_getter` and `mark` rule performance improvements.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+
+* HTML reports now display a relative path to files.  
+  [Jamie Edge](https://github.com/JamieEdge)
+
+* `colon` rule now validates colon position in dictionaries too. You can disable
+  this new validation with the `apply_to_dictionaries` configuration.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#603](https://github.com/realm/SwiftLint/issues/603)
+
+* Add `first_where` opt-in rule that warns against using
+  `.filter { /* ... */ }.first` in collections, as
+  `.first(where: { /* ... */ })` is often more efficient.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1005](https://github.com/realm/SwiftLint/issues/1005)
+
 ##### Bug Fixes
+
+* `FunctionParameterCountRule` also ignores generic initializers.  
+  [Mauricio Hanika](https://github.com/mAu888)
 
 * Grammar checks.  
   [Michael Helmbrecht](https://github.com/mrh-is)
+
+* Fix the validity and styling of the HTML reporter.  
+  [Jamie Edge](https://github.com/JamieEdge)
+
+* Fix false positive in `empty_parentheses_with_trailing_closure` rule.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1021](https://github.com/realm/SwiftLint/issues/1021)
+
+* Fix false positive in `switch_case_on_newline` when switching
+  over a selector.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1020](https://github.com/realm/SwiftLint/issues/1020)
+
+* Fix crash in `closure_parameter_position` rule.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1026](https://github.com/realm/SwiftLint/issues/1026)
+
+* Fix false positive in `operator_usage_whitespace` rule when
+  using image literals.  
+  [Marcelo Fabri](https://github.com/marcelofabri)
+  [#1028](https://github.com/realm/SwiftLint/issues/1028)
 
 ## 0.14.0: Super Awesome Retractable Drying Rack
 
@@ -103,7 +344,7 @@
 * `type_name` rule now validates `typealias` and `associatedtype` too.  
   [Marcelo Fabri](https://github.com/marcelofabri)
   [#49](https://github.com/realm/SwiftLint/issues/49)
-  [#956](https://github.com/realm/SwiftLint/issues/959)
+  [#956](https://github.com/realm/SwiftLint/issues/956)
 
 * Add `ProhibitedSuperRule` opt-in rule that warns about methods calling
   to super that should not, for example `UIViewController.loadView()`.  

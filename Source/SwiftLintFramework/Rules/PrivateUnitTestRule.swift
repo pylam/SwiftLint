@@ -17,16 +17,14 @@ private extension AccessControlLevel {
     }
 }
 
-private func superclass(_ dictionary: [String: SourceKitRepresentable]) -> String? {
-    guard let kindString = dictionary["key.kind"] as? String,
-        let kind = SwiftDeclarationKind(rawValue: kindString), kind == .class,
-        let inheritedTypes = dictionary["key.inheritedtypes"] as? [SourceKitRepresentable],
-        let firstInheritedTypeDict = inheritedTypes[0] as? [String: SourceKitRepresentable],
-        let className = firstInheritedTypeDict["key.name"] as? String else { return nil }
-    return className
+private extension Dictionary where Key: ExpressibleByStringLiteral {
+    var superclass: String? {
+        guard let kindString = self["key.kind"] as? String,
+            let kind = SwiftDeclarationKind(rawValue: kindString), kind == .class,
+            let className = inheritedTypes.first else { return nil }
+        return className
+    }
 }
-
-open class FooTest: NSObject {}
 
 public struct PrivateUnitTestRule: ASTRule, ConfigurationProviderRule {
 
@@ -99,8 +97,8 @@ public struct PrivateUnitTestRule: ASTRule, ConfigurationProviderRule {
         ]
     )
 
-    public func validateFile(_ file: File, kind: SwiftDeclarationKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftDeclarationKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         guard kind == .class && isTestClass(dictionary) else { return [] }
 
         /* It's not strictly necessary to check for `private` on classes because a
@@ -113,41 +111,37 @@ public struct PrivateUnitTestRule: ASTRule, ConfigurationProviderRule {
          the violation will match the line that must be edited.
          */
 
-        let classViolations = validateAccessControlLevel(file, dictionary: dictionary)
+        let classViolations = validateAccessControlLevel(file: file, dictionary: dictionary)
         guard classViolations.isEmpty else { return classViolations }
 
-        let substructure = dictionary["key.substructure"] as? [SourceKitRepresentable] ?? []
-        return substructure.flatMap { subItem -> [StyleViolation] in
-            guard let subDict = subItem as? [String: SourceKitRepresentable],
-                let kindString = subDict["key.kind"] as? String,
+        return dictionary.substructure.flatMap { subDict -> [StyleViolation] in
+            guard let kindString = subDict["key.kind"] as? String,
                 let kind = KindType(rawValue: kindString), kind == .functionMethodInstance else {
                     return []
             }
-            return validateFunction(file, kind: kind, dictionary: subDict)
+            return validateFunction(file: file, kind: kind, dictionary: subDict)
         }
     }
 
-    fileprivate func isTestClass(_ dictionary: [String: SourceKitRepresentable]) -> Bool {
-        guard let regex = configuration.regex, let superclass = superclass(dictionary) else {
+    private func isTestClass(_ dictionary: [String: SourceKitRepresentable]) -> Bool {
+        guard let regex = configuration.regex, let superclass = dictionary.superclass else {
             return false
         }
         let range = NSRange(location: 0, length: superclass.bridge().length)
         return !regex.matches(in: superclass, options: [], range: range).isEmpty
     }
 
-    fileprivate func validateFunction(_ file: File, kind: SwiftDeclarationKind,
-                                      dictionary: [String: SourceKitRepresentable])
-                                      -> [StyleViolation] {
+    private func validateFunction(file: File, kind: SwiftDeclarationKind,
+                                  dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         assert(kind == .functionMethodInstance)
         guard let name = dictionary["key.name"] as? String, name.hasPrefix("test") else {
             return []
         }
-        return validateAccessControlLevel(file, dictionary: dictionary)
+        return validateAccessControlLevel(file: file, dictionary: dictionary)
     }
 
-    fileprivate func validateAccessControlLevel(_ file: File,
-                                                dictionary: [String: SourceKitRepresentable])
-                                                -> [StyleViolation] {
+    private func validateAccessControlLevel(file: File,
+                                            dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         guard let acl = AccessControlLevel(dictionary), acl.isPrivate else { return [] }
         let offset = Int(dictionary["key.offset"] as? Int64 ?? 0)
         return [StyleViolation(ruleDescription: type(of: self).description,

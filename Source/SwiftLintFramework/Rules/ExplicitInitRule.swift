@@ -31,14 +31,13 @@ public struct ExplicitInitRule: ASTRule, ConfigurationProviderRule, CorrectableR
             "[String.self].map { Type in Type↓.init(1) }"  // starting with capital assumes as type
         ],
         corrections: [
-            "[1].flatMap{String↓.init($0)}" : "[1].flatMap{String($0)}"
+            "[1].flatMap{String↓.init($0)}": "[1].flatMap{String($0)}"
         ]
     )
 
-    public func validateFile(_ file: File,
-                             kind: SwiftExpressionKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
-        return violationRangesInFile(file, kind: kind, dictionary: dictionary).map {
+    public func validate(file: File, kind: SwiftExpressionKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+        return violationRanges(in: file, kind: kind, dictionary: dictionary).map {
             StyleViolation(ruleDescription: type(of: self).description,
                 severity: configuration.severity,
                 location: Location(file: file, characterOffset: $0.location))
@@ -47,8 +46,8 @@ public struct ExplicitInitRule: ASTRule, ConfigurationProviderRule, CorrectableR
 
     private let initializerWithType = regex("^[A-Z].*\\.init$")
 
-    private func violationRangesInFile(_ file: File, kind: SwiftExpressionKind,
-                                       dictionary: [String: SourceKitRepresentable]) -> [NSRange] {
+    private func violationRanges(in file: File, kind: SwiftExpressionKind,
+                                 dictionary: [String: SourceKitRepresentable]) -> [NSRange] {
         func isExpected(_ name: String) -> Bool {
             let range = NSRange(location: 0, length: name.utf16.count)
             return !["super.init", "self.init"].contains(name)
@@ -67,37 +66,33 @@ public struct ExplicitInitRule: ASTRule, ConfigurationProviderRule, CorrectableR
         return [range]
     }
 
-    private func violationRangesInFile(_ file: File,
-                                       dictionary: [String: SourceKitRepresentable]) -> [NSRange] {
-        let substructure = dictionary["key.substructure"] as? [SourceKitRepresentable] ?? []
-        return substructure.flatMap { subItem -> [NSRange] in
-            guard let subDict = subItem as? [String: SourceKitRepresentable],
-                let kindString = subDict["key.kind"] as? String,
+    private func violationRanges(in file: File, dictionary: [String: SourceKitRepresentable]) -> [NSRange] {
+        return dictionary.substructure.flatMap { subDict -> [NSRange] in
+            guard let kindString = subDict["key.kind"] as? String,
                 let kind = SwiftExpressionKind(rawValue: kindString) else {
                     return []
             }
-            return violationRangesInFile(file, dictionary: subDict) +
-                violationRangesInFile(file, kind: kind, dictionary: subDict)
+            return violationRanges(in: file, dictionary: subDict) +
+                violationRanges(in: file, kind: kind, dictionary: subDict)
         }
     }
 
-    private func violationRangesInFile(_ file: File) -> [NSRange] {
-        return violationRangesInFile(file, dictionary: file.structure.dictionary).sorted { lh, rh in
+    private func violationRanges(in file: File) -> [NSRange] {
+        return violationRanges(in: file, dictionary: file.structure.dictionary).sorted { lh, rh in
             lh.location > rh.location
         }
     }
 
-    public func correctFile(_ file: File) -> [Correction] {
-        let matches = violationRangesInFile(file)
-            .filter { !file.ruleEnabledViolatingRanges([$0], forRule: self).isEmpty }
+    public func correct(file: File) -> [Correction] {
+        let matches = violationRanges(in: file)
+            .filter { !file.ruleEnabled(violatingRanges: [$0], for: self).isEmpty }
         guard !matches.isEmpty else { return [] }
 
         let description = type(of: self).description
         var corrections = [Correction]()
         var contents = file.contents
         for range in matches {
-            contents = contents.bridge()
-                .replacingCharacters(in: range, with: "")
+            contents = contents.bridge().replacingCharacters(in: range, with: "")
             let location = Location(file: file, characterOffset: range.location)
             corrections.append(Correction(ruleDescription: description, location: location))
         }

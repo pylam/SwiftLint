@@ -30,8 +30,7 @@ extension String {
         return self == lowercased()
     }
 
-    internal func nameStrippingLeadingUnderscoreIfPrivate(
-        _ dict: [String: SourceKitRepresentable]) -> String {
+    internal func nameStrippingLeadingUnderscoreIfPrivate(_ dict: [String: SourceKitRepresentable]) -> String {
         if let aclString = dict["key.accessibility"] as? String,
            let acl = AccessControlLevel(identifier: aclString),
             acl.isPrivate && characters.first == "_" {
@@ -40,7 +39,7 @@ extension String {
         return self
     }
 
-    internal subscript (range: Range<Int>) -> String {
+    private subscript (range: Range<Int>) -> String {
         let nsrange = NSRange(location: range.lowerBound,
                               length: range.upperBound - range.lowerBound)
         if let indexRange = nsrangeToIndexRange(nsrange) {
@@ -49,7 +48,7 @@ extension String {
         fatalError("invalid range")
     }
 
-    internal func substring(_ from: Int, length: Int? = nil) -> String {
+    internal func substring(from: Int, length: Int? = nil) -> String {
         if let length = length {
             return self[from..<from + length]
         }
@@ -57,7 +56,7 @@ extension String {
         return substring(from: index)
     }
 
-    internal func lastIndexOf(_ search: String) -> Int? {
+    internal func lastIndex(of search: String) -> Int? {
         if let range = range(of: search, options: [.literal, .backwards]) {
             return characters.distance(from: startIndex, to: range.lowerBound)
         }
@@ -80,5 +79,17 @@ extension String {
 
     public func absolutePathStandardized() -> String {
         return bridge().absolutePathRepresentation().bridge().standardizingPath
+    }
+
+    internal var isFile: Bool {
+        var isDirectoryObjC: ObjCBool = false
+        if FileManager.default.fileExists(atPath: self, isDirectory: &isDirectoryObjC) {
+            #if os(Linux)
+                return !isDirectoryObjC
+            #else
+                return !isDirectoryObjC.boolValue
+            #endif
+        }
+        return false
     }
 }

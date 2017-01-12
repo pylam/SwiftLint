@@ -15,6 +15,11 @@ opt_in_rules:
   - attributes
   - operator_usage_whitespace
   - closure_end_indentation
+  - first_where
+  - sorted_imports
+  - object_literal
+  - number_separator
+  - prohibited_super_call
 
 file_header:
   required_pattern: |
@@ -25,3 +30,6 @@ file_header:
                     \/\/  Created by .*? on \d{1,2}\/\d{1,2}\/\d{2}\.
                     \/\/  Copyright © \d{4} Realm\. All rights reserved\.
                     \/\/
+line_length: 120
+number_separator:
+  minimum_length: 5

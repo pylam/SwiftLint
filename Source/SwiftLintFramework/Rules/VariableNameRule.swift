@@ -61,16 +61,15 @@ public struct VariableNameRule: ASTRule, ConfigurationProviderRule {
         return false
     }
 
-    public func validateFile(_ file: File, kind: SwiftDeclarationKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftDeclarationKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         return file.validateVariableName(dictionary, kind: kind).map { name, offset in
             if configuration.excluded.contains(name) {
                 return []
             }
 
-            let nameCharacterSet = CharacterSet(charactersIn: name)
             let description = type(of: self).description
-            if !CharacterSet.alphanumerics.isSuperset(of: nameCharacterSet) {
+            if !CharacterSet.alphanumerics.isSuperset(ofCharactersIn: name) {
                 return [StyleViolation(ruleDescription: description,
                     severity: .error,
                     location: Location(file: file, byteOffset: offset),

@@ -7,14 +7,14 @@
 //
 
 import Foundation
-@testable import SwiftLintFramework
 import SourceKittenFramework
+@testable import SwiftLintFramework
 import XCTest
 
-let optInRules = masterRuleList.list.filter({ $0.1.init() is OptInRule }).map({ $0.0 })
+private let optInRules = masterRuleList.list.filter({ $0.1.init() is OptInRule }).map({ $0.0 })
 
 extension Configuration {
-    var disabledRules: [String] {
+    fileprivate var disabledRules: [String] {
         let configuredRuleIDs = rules.map({ type(of: $0).description.identifier })
         let defaultRuleIDs = Set(masterRuleList.list.values.filter({
             !($0.init() is OptInRule)
@@ -41,12 +41,12 @@ class ConfigurationTests: XCTestCase {
         XCTAssertEqual(config.included, [])
         XCTAssertEqual(config.excluded, [])
         XCTAssertEqual(config.reporter, "xcode")
-        XCTAssertEqual(reporterFromString(config.reporter).identifier, "xcode")
+        XCTAssertEqual(reporterFrom(identifier: config.reporter).identifier, "xcode")
     }
 
     func testWhitelistRules() {
         let whitelist = ["nesting", "todo"]
-        let config = Configuration(dict: ["whitelist_rules":  whitelist])!
+        let config = Configuration(dict: ["whitelist_rules": whitelist])!
         let configuredIdentifiers = config.rules.map {
             type(of: $0).description.identifier
         }.sorted()
@@ -85,19 +85,19 @@ class ConfigurationTests: XCTestCase {
     }
 
     func testDisabledRules() {
-        let disabledConfig = Configuration(dict: ["disabled_rules":  ["nesting", "todo"]])!
+        let disabledConfig = Configuration(dict: ["disabled_rules": ["nesting", "todo"]])!
         XCTAssertEqual(disabledConfig.disabledRules,
                        ["nesting", "todo"],
                        "initializing Configuration with valid rules in Dictionary should succeed")
-        let expectedIdentifiers = Array(masterRuleList.list.keys)
-            .filter({ !(["nesting", "todo"] + optInRules).contains($0) })
-        let configuredIdentifiers = disabledConfig.rules.map {
+        let expectedIdentifiers = Set(masterRuleList.list.keys
+            .filter({ !(["nesting", "todo"] + optInRules).contains($0) }))
+        let configuredIdentifiers = Set(disabledConfig.rules.map {
             type(of: $0).description.identifier
-        }
+        })
         XCTAssertEqual(expectedIdentifiers, configuredIdentifiers)
 
         // Duplicate
-        let duplicateConfig = Configuration(dict: ["disabled_rules":  ["todo", "todo"]])
+        let duplicateConfig = Configuration(dict: ["disabled_rules": ["todo", "todo"]])
         XCTAssert(duplicateConfig == nil, "initializing Configuration with duplicate rules in " +
             "Dictionary should fail")
     }
@@ -110,17 +110,16 @@ class ConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.disabledRules,
                        [validRule],
                        "initializing Configuration with valid rules in YAML string should succeed")
-        let expectedIdentifiers = Array(masterRuleList.list.keys)
-            .filter({ !([validRule] + optInRules).contains($0) })
-        let configuredIdentifiers = configuration.rules.map {
+        let expectedIdentifiers = Set(masterRuleList.list.keys
+            .filter({ !([validRule] + optInRules).contains($0) }))
+        let configuredIdentifiers = Set(configuration.rules.map {
             type(of: $0).description.identifier
-        }
+        })
         XCTAssertEqual(expectedIdentifiers, configuredIdentifiers)
     }
 
-#if !os(Linux)
-    fileprivate class TestFileManager: FileManager {
-        override func filesToLintAtPath(_ path: String, rootDirectory: String? = nil) -> [String] {
+    private class TestFileManager: LintableFileManager {
+        func filesToLint(inPath path: String, rootDirectory: String? = nil) -> [String] {
             switch path {
             case "directory": return ["directory/File1.swift", "directory/File2.swift",
                                       "directory/excluded/Excluded.swift",
@@ -138,10 +137,9 @@ class ConfigurationTests: XCTestCase {
         let configuration = Configuration(included: ["directory"],
                                           excluded: ["directory/excluded",
                                                      "directory/ExcludedFile.swift"])!
-        let paths = configuration.lintablePathsForPath("", fileManager: TestFileManager())
+        let paths = configuration.lintablePaths(inPath: "", fileManager: TestFileManager())
         XCTAssertEqual(["directory/File1.swift", "directory/File2.swift"], paths)
     }
-#endif
 
     // MARK: - Testing Configuration Equality
 
@@ -166,50 +164,85 @@ class ConfigurationTests: XCTestCase {
     // MARK: - Testing Nested Configurations
 
     func testMerge() {
-        XCTAssertEqual(projectMockConfig0.merge(projectMockConfig2), projectMockConfig2)
+        XCTAssertEqual(projectMockConfig0.merge(with: projectMockConfig2), projectMockConfig2)
     }
 
     func testLevel0() {
-        XCTAssertEqual(projectMockConfig0.configurationForFile(File(path: projectMockSwift0)!),
+        XCTAssertEqual(projectMockConfig0.configuration(for: File(path: projectMockSwift0)!),
                        projectMockConfig0)
     }
 
     func testLevel1() {
-        XCTAssertEqual(projectMockConfig0.configurationForFile(File(path: projectMockSwift1)!),
+        XCTAssertEqual(projectMockConfig0.configuration(for: File(path: projectMockSwift1)!),
                        projectMockConfig0)
     }
 
     func testLevel2() {
-        XCTAssertEqual(projectMockConfig0.configurationForFile(File(path: projectMockSwift2)!),
-                       projectMockConfig0.merge(projectMockConfig2))
+        XCTAssertEqual(projectMockConfig0.configuration(for: File(path: projectMockSwift2)!),
+                       projectMockConfig0.merge(with: projectMockConfig2))
     }
 
     func testLevel3() {
-        XCTAssertEqual(projectMockConfig0.configurationForFile(File(path: projectMockSwift3)!),
-                       projectMockConfig0.merge(projectMockConfig2))
+        XCTAssertEqual(projectMockConfig0.configuration(for: File(path: projectMockSwift3)!),
+                       projectMockConfig0.merge(with: projectMockConfig2))
     }
 
     // MARK: - Testing Rules from config dictionary
 
     let testRuleList = RuleList(rules: RuleWithLevelsMock.self)
 
-    func testConfiguresCorrectlyFromDict() {
+    func testConfiguresCorrectlyFromDict() throws {
         let ruleConfiguration = [1, 2]
         let config = [RuleWithLevelsMock.description.identifier: ruleConfiguration]
-        let rules = testRuleList.configuredRules(with: config)
-        XCTAssertTrue(rules == [try RuleWithLevelsMock(configuration: ruleConfiguration) as Rule])
+        let rules = try testRuleList.configuredRules(with: config)
+        XCTAssertTrue(rules == [try RuleWithLevelsMock(configuration: ruleConfiguration)])
     }
 
-    func testConfigureFallsBackCorrectly() {
+    func testConfigureFallsBackCorrectly() throws {
         let config = [RuleWithLevelsMock.description.identifier: ["a", "b"]]
-        let rules = testRuleList.configuredRules(with: config)
-        XCTAssertTrue(rules == [RuleWithLevelsMock() as Rule])
+        let rules = try testRuleList.configuredRules(with: config)
+        XCTAssertTrue(rules == [RuleWithLevelsMock()])
     }
+
+    // MARK: - Aliases
+
+    func testConfiguresCorrectlyFromDeprecatedAlias() throws {
+        let ruleConfiguration = [1, 2]
+        let config = ["mock": ruleConfiguration]
+        let rules = try testRuleList.configuredRules(with: config)
+        XCTAssertTrue(rules == [try RuleWithLevelsMock(configuration: ruleConfiguration)])
+    }
+
+    func testReturnsNilWithDuplicatedConfiguration() {
+        let dict = ["mock": [1, 2], "severity_level_mock": [1, 3]]
+        let configuration = Configuration(dict: dict, ruleList: testRuleList)
+        XCTAssertNil(configuration)
+    }
+
+    func testInitsFromDeprecatedAlias() {
+        let ruleConfiguration = [1, 2]
+        let configuration = Configuration(dict: ["mock": ruleConfiguration], ruleList: testRuleList)
+        XCTAssertNotNil(configuration)
+    }
+
+    func testWhitelistRulesFromDeprecatedAlias() {
+        let configuration = Configuration(dict: ["whitelist_rules": ["mock"]], ruleList: testRuleList)!
+        let configuredIdentifiers = configuration.rules.map {
+            type(of: $0).description.identifier
+        }
+        XCTAssertEqual(configuredIdentifiers, ["severity_level_mock"])
+    }
+
+    func testDisabledRulesFromDeprecatedAlias() {
+        let configuration = Configuration(dict: ["disabled_rules": ["mock"]], ruleList: testRuleList)!
+        XCTAssert(configuration.rules.isEmpty)
+    }
+
 }
 
 // MARK: - ProjectMock Paths
 
-extension String {
+fileprivate extension String {
     func stringByAppendingPathComponent(_ pathComponent: String) -> String {
         return bridge().appendingPathComponent(pathComponent)
     }
@@ -223,6 +256,9 @@ extension XCTestCase {
             return Bundle(for: type(of: self)).resourcePath!
         #endif
     }
+}
+
+fileprivate extension XCTestCase {
 
     var projectMockPathLevel0: String {
         return bundlePath.stringByAppendingPathComponent("ProjectMock")
@@ -277,7 +313,7 @@ extension ConfigurationTests {
                 testOtherRuleConfigurationsAlongsideWhitelistRules),
             ("testDisabledRules", testDisabledRules),
             ("testDisabledRulesWithUnknownRule", testDisabledRulesWithUnknownRule),
-            // ("testExcludedPaths", testExcludedPaths),
+            ("testExcludedPaths", testExcludedPaths),
             ("testIsEqualTo", testIsEqualTo),
             ("testIsNotEqualTo", testIsNotEqualTo),
             ("testMerge", testMerge),
@@ -286,7 +322,12 @@ extension ConfigurationTests {
             ("testLevel2", testLevel2),
             ("testLevel3", testLevel3),
             ("testConfiguresCorrectlyFromDict", testConfiguresCorrectlyFromDict),
-            ("testConfigureFallsBackCorrectly", testConfigureFallsBackCorrectly)
+            ("testConfigureFallsBackCorrectly", testConfigureFallsBackCorrectly),
+            ("testConfiguresCorrectlyFromDeprecatedAlias", testConfiguresCorrectlyFromDeprecatedAlias),
+            ("testReturnsNilWithDuplicatedConfiguration", testReturnsNilWithDuplicatedConfiguration),
+            ("testInitsFromDeprecatedAlias", testInitsFromDeprecatedAlias),
+            ("testWhitelistRulesFromDeprecatedAlias", testWhitelistRulesFromDeprecatedAlias),
+            ("testDisabledRulesFromDeprecatedAlias", testDisabledRulesFromDeprecatedAlias)
         ]
     }
 }

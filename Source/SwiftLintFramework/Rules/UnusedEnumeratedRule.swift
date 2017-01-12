@@ -33,14 +33,13 @@ public struct UnusedEnumeratedRule: ASTRule, ConfigurationProviderRule {
         ]
     )
 
-    public func validateFile(_ file: File,
-                             kind: StatementKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: StatementKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
 
         guard kind == .forEach,
-            isEnumeratedCall(dictionary),
-            let byteRange = byteRangeForVariables(dictionary),
-            let firstToken = file.syntaxMap.tokensIn(byteRange).first,
+            isEnumeratedCall(dictionary: dictionary),
+            let byteRange = byteRangeForVariables(dictionary: dictionary),
+            let firstToken = file.syntaxMap.tokens(inByteRange: byteRange).first,
             firstToken.length == 1,
             SyntaxKind(rawValue: firstToken.type) == .keyword,
             isUnderscore(file: file, token: firstToken) else {
@@ -54,11 +53,9 @@ public struct UnusedEnumeratedRule: ASTRule, ConfigurationProviderRule {
         ]
     }
 
-    private func isEnumeratedCall(_ dictionary: [String: SourceKitRepresentable]) -> Bool {
-        let substructure = dictionary["key.substructure"] as? [SourceKitRepresentable] ?? []
-        for subItem in substructure {
-            guard let subDict = subItem as? [String: SourceKitRepresentable],
-                let kindString = subDict["key.kind"] as? String,
+    private func isEnumeratedCall(dictionary: [String: SourceKitRepresentable]) -> Bool {
+        for subDict in dictionary.substructure {
+            guard let kindString = subDict["key.kind"] as? String,
                 SwiftExpressionKind(rawValue: kindString) == .call,
                 let name = subDict["key.name"] as? String else {
                     continue
@@ -72,7 +69,7 @@ public struct UnusedEnumeratedRule: ASTRule, ConfigurationProviderRule {
         return false
     }
 
-    private func byteRangeForVariables(_ dictionary: [String: SourceKitRepresentable]) -> NSRange? {
+    private func byteRangeForVariables(dictionary: [String: SourceKitRepresentable]) -> NSRange? {
         guard let elements = dictionary["key.elements"] as? [SourceKitRepresentable] else {
             return nil
         }

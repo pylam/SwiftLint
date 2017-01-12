@@ -46,33 +46,30 @@ public struct ImplicitGetterRule: Rule, ConfigurationProviderRule {
         ],
         triggeringExamples: [
             classScoped("var foo: Int {\n ↓get {\n return 20 \n} \n} \n}"),
+            classScoped("var foo: Int {\n ↓get{\n return 20 \n} \n} \n}"),
             classScoped("static var foo: Int {\n ↓get {\n return 20 \n} \n} \n}")
         ]
     )
 
-    public func validateFile(_ file: File) -> [StyleViolation] {
-        let getTokens = file.syntaxMap.tokens.filter { token -> Bool in
-            guard SyntaxKind(rawValue: token.type) == .keyword else {
-                return false
+    public func validate(file: File) -> [StyleViolation] {
+        let pattern = "\\bget\\b"
+        let getTokens: [SyntaxToken] = file.rangesAndTokens(matching: pattern).flatMap { _, tokens in
+            guard tokens.count == 1, let token = tokens.first,
+                SyntaxKind(rawValue: token.type) == .keyword else {
+                return nil
             }
 
-            guard let tokenValue = file.contents.bridge()
-                .substringWithByteRange(start: token.offset, length: token.length) else {
-                    return false
-            }
-
-            return tokenValue == "get"
+            return token
         }
 
         let violatingTokens = getTokens.filter { token -> Bool in
             // the last element is the deepest structure
-            guard let dictionary =
-                variableDeclarationsFor(token.offset, structure: file.structure).last else {
-                    return false
+            guard let dict = variableDeclarations(forByteOffset: token.offset, structure: file.structure).last else {
+                return false
             }
 
             // If there's a setter, `get` is allowed
-            return dictionary["key.setter_accessibility"] == nil
+            return dict["key.setter_accessibility"] == nil
         }
 
         return violatingTokens.map { token in
@@ -86,8 +83,8 @@ public struct ImplicitGetterRule: Rule, ConfigurationProviderRule {
         }
     }
 
-    private func variableDeclarationsFor(_ byteOffset: Int, structure: Structure) ->
-                                                          [[String: SourceKitRepresentable]] {
+    private func variableDeclarations(forByteOffset byteOffset: Int,
+                                      structure: Structure) -> [[String: SourceKitRepresentable]] {
         var results = [[String: SourceKitRepresentable]]()
 
         func parse(dictionary: [String: SourceKitRepresentable]) {
@@ -119,13 +116,11 @@ public struct ImplicitGetterRule: Rule, ConfigurationProviderRule {
                 .struct
             ] + allowedKinds
 
-            if let subStructure = dictionary["key.substructure"] as? [SourceKitRepresentable] {
-                for case let dictionary as [String: SourceKitRepresentable] in subStructure {
-                    if let kindString = (dictionary["key.kind"] as? String),
-                        let kind = SwiftDeclarationKind(rawValue: kindString),
-                        typeKinds.contains(kind) {
-                        parse(dictionary: dictionary)
-                    }
+            for dictionary in dictionary.substructure {
+                if let kindString = (dictionary["key.kind"] as? String),
+                    let kind = SwiftDeclarationKind(rawValue: kindString),
+                    typeKinds.contains(kind) {
+                    parse(dictionary: dictionary)
                 }
             }
         }

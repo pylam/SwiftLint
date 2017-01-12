@@ -6,10 +6,11 @@
 //  Copyright © 2015 Realm. All rights reserved.
 //
 
+import Foundation
 import SourceKittenFramework
 
 public struct LineLengthRule: ConfigurationProviderRule, SourceKitFreeRule {
-    public var configuration = SeverityLevelsConfiguration(warning: 100, error: 200)
+    public var configuration = LineLengthConfiguration(warning: 120, error: 200, ignoresURLs: false)
 
     public init() {}
 
@@ -18,18 +19,18 @@ public struct LineLengthRule: ConfigurationProviderRule, SourceKitFreeRule {
         name: "Line Length",
         description: "Lines should not span too many characters.",
         nonTriggeringExamples: [
-            String(repeating: "/", count: 100) + "\n",
-            String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 100) + "\n",
-            String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 100) + "\n"
+            String(repeating: "/", count: 120) + "\n",
+            String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 120) + "\n",
+            String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 120) + "\n"
         ],
         triggeringExamples: [
-            String(repeating: "/", count: 101) + "\n",
-            String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 101) + "\n",
-            String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 101) + "\n"
+            String(repeating: "/", count: 121) + "\n",
+            String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 121) + "\n",
+            String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 121) + "\n"
         ]
     )
 
-    public func validateFile(_ file: File) -> [StyleViolation] {
+    public func validate(file: File) -> [StyleViolation] {
         let minValue = configuration.params.map({ $0.value }).min(by: <)
         return file.lines.flatMap { line in
             // `line.content.characters.count` <= `line.range.length` is true.
@@ -40,6 +41,9 @@ public struct LineLengthRule: ConfigurationProviderRule, SourceKitFreeRule {
             }
 
             var strippedString = line.content
+            if configuration.ignoresURLs {
+                strippedString = strippedString.strippingURLs
+            }
             strippedString = stripLiterals(fromSourceString: strippedString,
                 withDelimiter: "#colorLiteral")
             strippedString = stripLiterals(fromSourceString: strippedString,
@@ -51,7 +55,7 @@ public struct LineLengthRule: ConfigurationProviderRule, SourceKitFreeRule {
                 return StyleViolation(ruleDescription: type(of: self).description,
                     severity: param.severity,
                     location: Location(file: file.path, line: line.index),
-                    reason: "Line should be \(configuration.warning) characters or less: " +
+                    reason: "Line should be \(configuration.length.warning) characters or less: " +
                         "currently \(length) characters")
             }
             return nil
@@ -66,7 +70,7 @@ public struct LineLengthRule: ConfigurationProviderRule, SourceKitFreeRule {
     ///
     /// - returns: sourceString with the given literals replaced by `#`
     private func stripLiterals(fromSourceString sourceString: String,
-                                                withDelimiter delimiter: String) -> String {
+                               withDelimiter delimiter: String) -> String {
         var modifiedString = sourceString
 
         // While copy of content contains literal, replace with a single character
@@ -87,4 +91,25 @@ public struct LineLengthRule: ConfigurationProviderRule, SourceKitFreeRule {
         return modifiedString
     }
 
+}
+
+fileprivate extension String {
+    var strippingURLs: String {
+        let range = NSRange(location: 0, length: bridge().length)
+        // Workaround for Linux until NSDataDetector is available
+        #if os(Linux)
+            // Regex pattern from http://daringfireball.net/2010/07/improved_regex_for_matching_urls
+            let pattern = "(?i)\\b((?:[a-z][\\w-]+:(?:/{1,3}|[a-z0-9%])|www\\d{0,3}[.]|[a-z0-9.\\-]+[.][a-z]{2,4}/)" +
+                "(?:[^\\s()<>]+|\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\))+(?:\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*" +
+                "\\)|[^\\s`!()\\[\\]{};:'\".,<>?«»“”‘’]))"
+            let urlRegex = regex(pattern)
+            return urlRegex.stringByReplacingMatches(in: self, options: [], range: range, withTemplate: "")
+        #else
+            let types = NSTextCheckingResult.CheckingType.link.rawValue
+            guard let urlDetector = try? NSDataDetector(types: types) else {
+                return self
+            }
+            return urlDetector.stringByReplacingMatches(in: self, options: [], range: range, withTemplate: "")
+        #endif
+    }
 }

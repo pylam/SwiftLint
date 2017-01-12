@@ -11,11 +11,10 @@ import SourceKittenFramework
 
 private func children(of dict: [String: SourceKitRepresentable],
                       matching kind: SwiftDeclarationKind) -> [[String: SourceKitRepresentable]] {
-    return (dict["key.substructure"] as? [SourceKitRepresentable] ?? []).flatMap { item in
-        if let subDict = item as? [String: SourceKitRepresentable],
-            let kindString = subDict["key.kind"] as? String,
+    return dict.substructure.flatMap { subDict in
+        if let kindString = subDict["key.kind"] as? String,
             SwiftDeclarationKind(rawValue: kindString) == kind {
-                return subDict
+            return subDict
         }
         return nil
     }
@@ -44,18 +43,14 @@ public struct RedundantStringEnumValueRule: ASTRule, ConfigurationProviderRule {
         ]
     )
 
-    public func validateFile(_ file: File,
-                             kind: SwiftDeclarationKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftDeclarationKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         guard kind == .enum else {
             return []
         }
 
         // Check if it's a String enum
-        let inheritedTypes = (dictionary["key.inheritedtypes"] as? [SourceKitRepresentable])?
-            .flatMap({ ($0 as? [String: SourceKitRepresentable]) as? [String: String] })
-            .flatMap({ $0["key.name"] }) ?? []
-        guard inheritedTypes.contains("String") else {
+        guard dictionary.inheritedTypes.contains("String") else {
             return []
         }
 
@@ -67,8 +62,7 @@ public struct RedundantStringEnumValueRule: ASTRule, ConfigurationProviderRule {
         }
     }
 
-    private func violatingOffsetsForEnum(dictionary: [String: SourceKitRepresentable],
-                                         file: File) -> [Int] {
+    private func violatingOffsetsForEnum(dictionary: [String: SourceKitRepresentable], file: File) -> [Int] {
         var caseCount = 0
         var violations = [Int]()
 
@@ -90,8 +84,7 @@ public struct RedundantStringEnumValueRule: ASTRule, ConfigurationProviderRule {
         }).count
     }
 
-    private func violatingOffsetsForEnumCase(dictionary: [String: SourceKitRepresentable],
-                                             file: File) -> [Int] {
+    private func violatingOffsetsForEnumCase(dictionary: [String: SourceKitRepresentable], file: File) -> [Int] {
         return children(of: dictionary, matching: .enumelement).flatMap { element -> [Int] in
             guard let name = element["key.name"] as? String else {
                 return []
@@ -100,8 +93,7 @@ public struct RedundantStringEnumValueRule: ASTRule, ConfigurationProviderRule {
         }
     }
 
-    private func violatingOffsetsForEnumElement(dictionary: [String: SourceKitRepresentable],
-                                                name: String,
+    private func violatingOffsetsForEnumElement(dictionary: [String: SourceKitRepresentable], name: String,
                                                 file: File) -> [Int] {
         let enumInits = filterEnumInits(dictionary: dictionary)
 
@@ -122,8 +114,7 @@ public struct RedundantStringEnumValueRule: ASTRule, ConfigurationProviderRule {
         }
     }
 
-    private func filterEnumInits(dictionary: [String: SourceKitRepresentable]) ->
-                                                                [[String: SourceKitRepresentable]] {
+    private func filterEnumInits(dictionary: [String: SourceKitRepresentable]) -> [[String: SourceKitRepresentable]] {
         guard let elements = dictionary["key.elements"] as? [SourceKitRepresentable] else {
             return []
         }

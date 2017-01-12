@@ -53,10 +53,9 @@ public struct UnusedClosureParameterRule: ASTRule, ConfigurationProviderRule, Co
         ]
     )
 
-    public func validateFile(_ file: File,
-                             kind: SwiftExpressionKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
-        return violationRangesInFile(file, kind: kind, dictionary: dictionary).map { range, name in
+    public func validate(file: File, kind: SwiftExpressionKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+        return violationRanges(in: file, dictionary: dictionary, kind: kind).map { range, name in
             let reason = "Unused parameter \"\(name)\" in a closure should be replaced with _."
             return StyleViolation(ruleDescription: type(of: self).description,
                                   severity: configuration.severity,
@@ -65,14 +64,10 @@ public struct UnusedClosureParameterRule: ASTRule, ConfigurationProviderRule, Co
         }
     }
 
-    private func violationRangesInFile(_ file: File, kind: SwiftExpressionKind,
-                                       dictionary: [String: SourceKitRepresentable])
-                                       -> [(range: NSRange, name: String)] {
-        guard kind == .call else {
-            return []
-        }
-
-        guard let offset = (dictionary["key.offset"] as? Int64).flatMap({ Int($0) }),
+    private func violationRanges(in file: File, dictionary: [String: SourceKitRepresentable],
+                                 kind: SwiftExpressionKind) -> [(range: NSRange, name: String)] {
+        guard kind == .call,
+            let offset = (dictionary["key.offset"] as? Int64).flatMap({ Int($0) }),
             let length = (dictionary["key.length"] as? Int64).flatMap({ Int($0) }),
             let nameOffset = (dictionary["key.nameoffset"] as? Int64).flatMap({ Int($0) }),
             let nameLength = (dictionary["key.namelength"] as? Int64).flatMap({ Int($0) }),
@@ -89,7 +84,8 @@ public struct UnusedClosureParameterRule: ASTRule, ConfigurationProviderRule, Co
         return parameters.flatMap { param -> (NSRange, String)? in
             guard let paramOffset = (param["key.offset"] as? Int64).flatMap({ Int($0) }),
                 let paramLength = (param["key.length"] as? Int64).flatMap({ Int($0) }),
-                let name = param["key.name"] as? String,
+                let name = param[nameKey(for: .current)] as? String,
+                name != "_",
                 let regex = try? NSRegularExpression(pattern: name,
                                                      options: [.ignoreMetacharacters]),
                 let range = contents.byteRangeToNSRange(start: rangeStart, length: rangeLength)
@@ -103,7 +99,7 @@ public struct UnusedClosureParameterRule: ASTRule, ConfigurationProviderRule, Co
                                                                   length: range.length),
                     // if it's the parameter declaration itself, we should skip
                     byteRange.location != paramOffset,
-                    case let tokens = file.syntaxMap.tokensIn(byteRange),
+                    case let tokens = file.syntaxMap.tokens(inByteRange: byteRange),
                     // a parameter usage should be only one token
                     tokens.count == 1 else {
                     continue
@@ -122,29 +118,33 @@ public struct UnusedClosureParameterRule: ASTRule, ConfigurationProviderRule, Co
         }
     }
 
-    private func violationRangesInFile(_ file: File,
-                                       dictionary: [String: SourceKitRepresentable]) -> [NSRange] {
-        let substructure = dictionary["key.substructure"] as? [SourceKitRepresentable] ?? []
-        return substructure.flatMap { subItem -> [NSRange] in
-            guard let subDict = subItem as? [String: SourceKitRepresentable],
-                let kindString = subDict["key.kind"] as? String,
-                let kind = SwiftExpressionKind(rawValue: kindString) else {
-                    return []
-            }
-            return violationRangesInFile(file, dictionary: subDict) +
-                violationRangesInFile(file, kind: kind, dictionary: subDict).map({ $0.0 })
+    private func nameKey(for version: SwiftVersion) -> String {
+        switch version {
+        case .two: return "key.typename"
+        case .three: return "key.name"
         }
     }
 
-    private func violationRangesInFile(_ file: File) -> [NSRange] {
-        return violationRangesInFile(file, dictionary: file.structure.dictionary).sorted { lh, rh in
+    private func violationRanges(in file: File,
+                                 dictionary: [String: SourceKitRepresentable]) -> [NSRange] {
+        return dictionary.substructure.flatMap { subDict -> [NSRange] in
+            guard let kindString = subDict["key.kind"] as? String,
+                let kind = SwiftExpressionKind(rawValue: kindString) else {
+                    return []
+            }
+            return violationRanges(in: file, dictionary: subDict) +
+                violationRanges(in: file, dictionary: subDict, kind: kind).map({ $0.0 })
+        }
+    }
+
+    private func violationRanges(in file: File) -> [NSRange] {
+        return violationRanges(in: file, dictionary: file.structure.dictionary).sorted { lh, rh in
             lh.location < rh.location
         }
     }
 
-    public func correctFile(_ file: File) -> [Correction] {
-        let violatingRanges = file.ruleEnabledViolatingRanges(violationRangesInFile(file),
-                                                              forRule: self)
+    public func correct(file: File) -> [Correction] {
+        let violatingRanges = file.ruleEnabled(violatingRanges: violationRanges(in: file), for: self)
         var correctedContents = file.contents
         var adjustedLocations = [Int]()
 

@@ -10,9 +10,8 @@ import Foundation
 import SourceKittenFramework
 
 extension File {
-    fileprivate func invalidDocOffsets(_ dictionary: [String: SourceKitRepresentable]) -> [Int] {
-        let substructure = (dictionary["key.substructure"] as? [SourceKitRepresentable])?
-            .flatMap { $0 as? [String: SourceKitRepresentable] } ?? []
+    fileprivate func invalidDocOffsets(in dictionary: [String: SourceKitRepresentable]) -> [Int] {
+        let substructure = dictionary.substructure
         let substructureOffsets = substructure.flatMap(invalidDocOffsets)
         guard let kind = (dictionary["key.kind"] as? String).flatMap(SwiftDeclarationKind.init),
             kind != .varParameter,
@@ -227,8 +226,8 @@ public struct ValidDocsRule: ConfigurationProviderRule {
         ]
     )
 
-    public func validateFile(_ file: File) -> [StyleViolation] {
-        return file.invalidDocOffsets(file.structure.dictionary).map {
+    public func validate(file: File) -> [StyleViolation] {
+        return file.invalidDocOffsets(in: file.structure.dictionary).map {
             StyleViolation(ruleDescription: type(of: self).description,
                 severity: configuration.severity,
                 location: Location(file: file, byteOffset: $0))

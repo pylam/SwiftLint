@@ -11,7 +11,21 @@ import Result
 import SwiftLintFramework
 import SwiftyTextTable
 
-private let violationMarker = "↓"
+private func print(ruleDescription desc: RuleDescription) {
+    print("\(desc.consoleDescription)")
+
+    if !desc.triggeringExamples.isEmpty {
+        func indent(_ string: String) -> String {
+            return string.components(separatedBy: "\n")
+                .map { "    \($0)" }
+                .joined(separator: "\n")
+        }
+        print("\nTriggering Examples (violation is marked with '↓'):")
+        for (index, example) in desc.triggeringExamples.enumerated() {
+            print("\nExample #\(index + 1)\n\n\(indent(example))")
+        }
+    }
+}
 
 struct RulesCommand: CommandProtocol {
     let verb = "rules"
@@ -23,29 +37,13 @@ struct RulesCommand: CommandProtocol {
                 return .failure(.usageError(description: "No rule with identifier: \(ruleID)"))
             }
 
-            printRuleDescript(rule.description)
+            print(ruleDescription: rule.description)
             return .success()
         }
 
         let configuration = Configuration(commandLinePath: options.configurationFile)
         print(TextTable(ruleList: masterRuleList, configuration: configuration).render())
         return .success()
-    }
-
-    fileprivate func printRuleDescript(_ desc: RuleDescription) {
-        print("\(desc.consoleDescription)")
-
-        if !desc.triggeringExamples.isEmpty {
-            func indent(_ string: String) -> String {
-                return string.components(separatedBy: "\n")
-                    .map { "    \($0)" }
-                    .joined(separator: "\n")
-            }
-            print("\nTriggering Examples (violation is marked with '\(violationMarker)'):")
-            for (index, example) in desc.triggeringExamples.enumerated() {
-                print("\nExample #\(index + 1)\n\n\(indent(example))")
-            }
-        }
     }
 }
 
@@ -83,13 +81,9 @@ extension TextTable {
         let sortedRules = ruleList.list.sorted { $0.0 < $1.0 }
         for (ruleID, ruleType) in sortedRules {
             let rule = ruleType.init()
-            let configuredRule: Rule? = {
-                for rule in configuration.rules
-                    where type(of: rule).description.identifier == ruleID {
-                        return rule
-                }
-                return nil
-            }()
+            let configuredRule = configuration.rules.first { rule in
+                return type(of: rule).description.identifier == ruleID
+            }
             addRow(values: [
                 ruleID,
                 (rule is OptInRule) ? "yes" : "no",

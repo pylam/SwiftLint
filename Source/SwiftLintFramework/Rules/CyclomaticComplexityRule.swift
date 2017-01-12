@@ -38,13 +38,13 @@ public struct CyclomaticComplexityRule: ASTRule, ConfigurationProviderRule {
         ]
     )
 
-    public func validateFile(_ file: File, kind: SwiftDeclarationKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftDeclarationKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
         if !SwiftDeclarationKind.functionKinds().contains(kind) {
             return []
         }
 
-        let complexity = measureComplexity(file, dictionary: dictionary)
+        let complexity = measureComplexity(in: file, dictionary: dictionary)
 
         for parameter in configuration.params where complexity > parameter.value {
             let offset = Int(dictionary["key.offset"] as? Int64 ?? 0)
@@ -58,15 +58,11 @@ public struct CyclomaticComplexityRule: ASTRule, ConfigurationProviderRule {
         return []
     }
 
-    private func measureComplexity(_ file: File,
-                                       dictionary: [String: SourceKitRepresentable]) -> Int {
+    private func measureComplexity(in file: File, dictionary: [String: SourceKitRepresentable]) -> Int {
         var hasSwitchStatements = false
 
-        let substructure = dictionary["key.substructure"] as? [SourceKitRepresentable] ?? []
-
-        let complexity = substructure.reduce(0) { complexity, subItem in
-            guard let subDict = subItem as? [String: SourceKitRepresentable],
-                      let kind = subDict["key.kind"] as? String else {
+        let complexity = dictionary.substructure.reduce(0) { complexity, subDict in
+            guard let kind = subDict["key.kind"] as? String else {
                 return complexity
             }
 
@@ -76,7 +72,7 @@ public struct CyclomaticComplexityRule: ASTRule, ConfigurationProviderRule {
             }
 
             guard let statementKind = StatementKind(rawValue: kind) else {
-                return complexity + measureComplexity(file, dictionary: subDict)
+                return complexity + measureComplexity(in: file, dictionary: subDict)
             }
 
             if statementKind == .switch {
@@ -85,11 +81,11 @@ public struct CyclomaticComplexityRule: ASTRule, ConfigurationProviderRule {
 
             return complexity +
                 (complexityStatements.contains(statementKind) ? 1 : 0) +
-                measureComplexity(file, dictionary: subDict)
+                measureComplexity(in: file, dictionary: subDict)
         }
 
         if hasSwitchStatements {
-            return reduceSwitchComplexity(complexity, file: file, dictionary: dictionary)
+            return reduceSwitchComplexity(initialComplexity: complexity, file: file, dictionary: dictionary)
         }
 
         return complexity
@@ -97,7 +93,7 @@ public struct CyclomaticComplexityRule: ASTRule, ConfigurationProviderRule {
 
     // Switch complexity is reduced by `fallthrough` cases
 
-    private func reduceSwitchComplexity(_ complexity: Int, file: File,
+    private func reduceSwitchComplexity(initialComplexity complexity: Int, file: File,
                                         dictionary: [String: SourceKitRepresentable]) -> Int {
         let bodyOffset = Int(dictionary["key.bodyoffset"] as? Int64 ?? 0)
         let bodyLength = Int(dictionary["key.bodylength"] as? Int64 ?? 0)

@@ -32,14 +32,13 @@ public struct NestingRule: ASTRule, ConfigurationProviderRule {
         ]
     )
 
-    public func validateFile(_ file: File, kind: SwiftDeclarationKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
-        return validateFile(file, kind: kind, dictionary: dictionary, level: 0)
+    public func validate(file: File, kind: SwiftDeclarationKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+        return validate(file: file, kind: kind, dictionary: dictionary, level: 0)
     }
 
-    func validateFile(_ file: File, kind: SwiftDeclarationKind,
-                      dictionary: [String: SourceKitRepresentable],
-                      level: Int) -> [StyleViolation] {
+    private func validate(file: File, kind: SwiftDeclarationKind, dictionary: [String: SourceKitRepresentable],
+                          level: Int) -> [StyleViolation] {
         var violations = [StyleViolation]()
         let typeKinds = SwiftDeclarationKind.typeKinds()
         if let offset = (dictionary["key.offset"] as? Int64).flatMap({ Int($0) }) {
@@ -55,15 +54,13 @@ public struct NestingRule: ASTRule, ConfigurationProviderRule {
                     reason: "Statements should be nested at most 5 levels deep"))
             }
         }
-        let substructure = dictionary["key.substructure"] as? [SourceKitRepresentable] ?? []
-        violations.append(contentsOf: substructure.flatMap { subItem in
-            if let subDict = subItem as? [String: SourceKitRepresentable],
-                let kind = (subDict["key.kind"] as? String).flatMap(SwiftDeclarationKind.init) {
+        violations.append(contentsOf: dictionary.substructure.flatMap { subDict in
+            if let kind = (subDict["key.kind"] as? String).flatMap(SwiftDeclarationKind.init) {
                 return (kind, subDict)
             }
             return nil
         }.flatMap { kind, subDict in
-            return validateFile(file, kind: kind, dictionary: subDict, level: level + 1)
+            return validate(file: file, kind: kind, dictionary: subDict, level: level + 1)
         })
         return violations
     }

@@ -9,6 +9,9 @@
 import Foundation
 import SourceKittenFramework
 
+private let missingTrailingCommaReason = "Multi-line collection literals should have trailing commas."
+private let extraTrailingCommaReason = "Collection literals should not have trailing commas."
+
 public struct TrailingCommaRule: ASTRule, ConfigurationProviderRule {
     public var configuration = TrailingCommaConfiguration()
 
@@ -24,7 +27,8 @@ public struct TrailingCommaRule: ASTRule, ConfigurationProviderRule {
             "let foo = [:]\n",
             "let foo = [1: 2, 2: 3]\n",
             "let foo = [Void]()\n",
-            "let example = [ 1,\n 2\n // 3,\n]"
+            "let example = [ 1,\n 2\n // 3,\n]",
+            "foo([1: \"\\(error)\"])\n"
         ],
         triggeringExamples: [
             "let foo = [1, 2, 3↓,]\n",
@@ -34,16 +38,14 @@ public struct TrailingCommaRule: ASTRule, ConfigurationProviderRule {
             "struct Bar {\n let foo = [1: 2, 2: 3↓, ]\n}\n",
             "let foo = [1, 2, 3↓,] + [4, 5, 6↓,]\n",
             "let example = [ 1,\n2↓,\n // 3,\n]"
+            // "foo([1: \"\\(error)\"↓,])\n"
         ]
     )
 
-    // swiftlint:disable:next force_try
-    private static let regex = try! NSRegularExpression(pattern: ",",
-                                                        options: [.ignoreMetacharacters])
+    private static let commaRegex = regex(",", options: [.ignoreMetacharacters])
 
-    public func validateFile(_ file: File,
-                             kind: SwiftExpressionKind,
-                             dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
+    public func validate(file: File, kind: SwiftExpressionKind,
+                         dictionary: [String: SourceKitRepresentable]) -> [StyleViolation] {
 
         let allowedKinds: [SwiftExpressionKind] = [.array, .dictionary]
 
@@ -64,7 +66,7 @@ public struct TrailingCommaRule: ASTRule, ConfigurationProviderRule {
             return offset + length
         }
 
-        guard let lastPosition = endPositions.max() else {
+        guard let lastPosition = endPositions.max(), bodyLength + bodyOffset >= lastPosition else {
             return []
         }
 
@@ -77,17 +79,16 @@ public struct TrailingCommaRule: ASTRule, ConfigurationProviderRule {
         }
 
         let length = bodyLength + bodyOffset - lastPosition
-        let contentsAfterLastElement = contents.substringWithByteRange(start: lastPosition,
-                                                                       length: length) ?? ""
+        let contentsAfterLastElement = contents.substringWithByteRange(start: lastPosition, length: length) ?? ""
 
         // if a trailing comma is not present
-        guard let commaIndex = trailingCommaIndex(contentsAfterLastElement, file: file,
+        guard let commaIndex = trailingCommaIndex(contents: contentsAfterLastElement, file: file,
                                                   offset: lastPosition) else {
             guard configuration.mandatoryComma else {
                 return []
             }
 
-            return violations(file: file, byteOffset: lastPosition)
+            return violations(file: file, byteOffset: lastPosition, reason: missingTrailingCommaReason)
         }
 
         // trailing comma is present, which is a violation if mandatoryComma is false
@@ -96,27 +97,27 @@ public struct TrailingCommaRule: ASTRule, ConfigurationProviderRule {
         }
 
         let violationOffset = lastPosition + commaIndex
-        return violations(file: file, byteOffset: violationOffset)
+        return violations(file: file, byteOffset: violationOffset, reason: extraTrailingCommaReason)
     }
 
-    private func violations(file: File, byteOffset: Int) -> [StyleViolation] {
+    private func violations(file: File, byteOffset: Int, reason: String) -> [StyleViolation] {
         return [
             StyleViolation(ruleDescription: type(of: self).description,
                 severity: configuration.severityConfiguration.severity,
-                location: Location(file: file, byteOffset: byteOffset)
+                location: Location(file: file, byteOffset: byteOffset),
+                reason: reason
             )
         ]
     }
 
-    private func trailingCommaIndex(_ contents: String, file: File, offset: Int) -> Int? {
+    private func trailingCommaIndex(contents: String, file: File, offset: Int) -> Int? {
         let range = NSRange(location: 0, length: contents.bridge().length)
-        let ranges = TrailingCommaRule.regex
-            .matches(in: contents, options: [], range: range).map { $0.range }
+        let ranges = TrailingCommaRule.commaRegex.matches(in: contents, options: [], range: range).map { $0.range }
 
         // skip commas in comments
         return ranges.filter {
             let range = NSRange(location: $0.location + offset, length: $0.length)
-            let kinds = file.syntaxMap.tokensIn(range).flatMap { SyntaxKind(rawValue: $0.type) }
+            let kinds = file.syntaxMap.tokens(inByteRange: range).flatMap { SyntaxKind(rawValue: $0.type) }
             return kinds.filter(SyntaxKind.commentKinds().contains).isEmpty
         }.last.flatMap {
             contents.bridge().NSRangeToByteRange(start: $0.location, length: $0.length)

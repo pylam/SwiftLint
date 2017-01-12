@@ -6,8 +6,8 @@
 //  Copyright © 2016 Realm. All rights reserved.
 //
 
-import SourceKittenFramework
 import Foundation
+import SourceKittenFramework
 
 public struct MarkRule: CorrectableRule, ConfigurationProviderRule {
 
@@ -54,27 +54,27 @@ public struct MarkRule: CorrectableRule, ConfigurationProviderRule {
     private let mark = "MARK:"
 
     private var nonSpaceOrTwoOrMoreSpace: String {
-        return "(\(nonSpace)|\(twoOrMoreSpace))"
+        return "(?:\(nonSpace)|\(twoOrMoreSpace))"
     }
 
     private var spaceStartPattern: String {
-        return "(\(nonSpaceOrTwoOrMoreSpace)\(mark))"
+        return "(?:\(nonSpaceOrTwoOrMoreSpace)\(mark))"
     }
 
     private var endNonSpacePattern: String {
-        return "(\(mark)\(nonSpace))"
+        return "(?:\(mark)\(nonSpace))"
     }
 
     private var endTwoOrMoreSpacePattern: String {
-        return "(\(mark)\(twoOrMoreSpace))"
+        return "(?:\(mark)\(twoOrMoreSpace))"
     }
 
     private var twoOrMoreSpacesAfterHyphenPattern: String {
-        return "(\(mark) -\(twoOrMoreSpace))"
+        return "(?:\(mark) -\(twoOrMoreSpace))"
     }
 
     private var nonSpaceOrNewlineAfterHyphenPattern: String {
-        return "(\(mark) -[^ \n])"
+        return "(?:\(mark) -[^ \n])"
     }
 
     private var pattern: String {
@@ -87,35 +87,35 @@ public struct MarkRule: CorrectableRule, ConfigurationProviderRule {
         ].joined(separator: "|")
     }
 
-    public func validateFile(_ file: File) -> [StyleViolation] {
-        return violationRangesInFile(file, withPattern: pattern).map {
+    public func validate(file: File) -> [StyleViolation] {
+        return violationRanges(in: file, matching: pattern).map {
             StyleViolation(ruleDescription: type(of: self).description,
                 severity: configuration.severity,
                 location: Location(file: file, characterOffset: $0.location))
         }
     }
 
-    public func correctFile(_ file: File) -> [Correction] {
+    public func correct(file: File) -> [Correction] {
         var result = [Correction]()
 
-        result.append(contentsOf: correctFile(file,
+        result.append(contentsOf: correct(file: file,
             pattern: spaceStartPattern,
             replaceString: "// MARK:"))
 
-        result.append(contentsOf: correctFile(file,
+        result.append(contentsOf: correct(file: file,
             pattern: endNonSpacePattern,
             replaceString: "// MARK: ",
             keepLastChar: true))
 
-        result.append(contentsOf: correctFile(file,
+        result.append(contentsOf: correct(file: file,
             pattern: endTwoOrMoreSpacePattern,
             replaceString: "// MARK: "))
 
-        result.append(contentsOf: correctFile(file,
+        result.append(contentsOf: correct(file: file,
             pattern: twoOrMoreSpacesAfterHyphenPattern,
             replaceString: "// MARK: - "))
 
-        result.append(contentsOf: correctFile(file,
+        result.append(contentsOf: correct(file: file,
             pattern: nonSpaceOrNewlineAfterHyphenPattern,
             replaceString: "// MARK: - ",
             keepLastChar: true))
@@ -123,12 +123,12 @@ public struct MarkRule: CorrectableRule, ConfigurationProviderRule {
         return result
     }
 
-    private func correctFile(_ file: File,
-                             pattern: String,
-                             replaceString: String,
-                             keepLastChar: Bool = false) -> [Correction] {
-        let violations = violationRangesInFile(file, withPattern: pattern)
-        let matches = file.ruleEnabledViolatingRanges(violations, forRule: self)
+    private func correct(file: File,
+                         pattern: String,
+                         replaceString: String,
+                         keepLastChar: Bool = false) -> [Correction] {
+        let violations = violationRanges(in: file, matching: pattern)
+        let matches = file.ruleEnabled(violatingRanges: violations, for: self)
         if matches.isEmpty { return [] }
 
         var nsstring = file.contents.bridge()
@@ -146,9 +146,9 @@ public struct MarkRule: CorrectableRule, ConfigurationProviderRule {
         return corrections
     }
 
-    private func violationRangesInFile(_ file: File, withPattern pattern: String) -> [NSRange] {
+    private func violationRanges(in file: File, matching pattern: String) -> [NSRange] {
         let nsstring = file.contents.bridge()
-        return file.rangesAndTokensMatching(pattern).filter { _, syntaxTokens in
+        return file.rangesAndTokens(matching: pattern).filter { _, syntaxTokens in
             return !syntaxTokens.isEmpty && SyntaxKind(rawValue: syntaxTokens[0].type) == .comment
         }.flatMap { range, syntaxTokens in
             let identifierRange = nsstring
